@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+        <head>
+                <title>spacepirat.es damage sparking</title>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+                <style>
+                        body {
+                                color: #ffffff;
+                                font-family:Monospace;
+                                font-size:13px;
+                                text-align:center;
+                                font-weight: bold;
+
+                                background-color: #000000;
+                                margin: 0px;
+                                overflow: hidden;
+                        }
+                        #info {
+                                color: #fff;
+                                background-color: rgba( 0, 0, 0, 0.75 );
+                                position: relative;
+                                top: 0px; width: 100%;
+                                padding: 5px;
+                                z-index:100;
+                                width:33em;
+                                margin:0 auto -2em;
+                        }
+                        a { color: #ff0000 }
+                </style>
+        </head>
+
+        <body>
+                <div id="container"></div>
+
+                <script src="three.min.js"></script>
+
+
+
+                <script type="x-shader/x-vertex" id="damagespark_v">
+
+                        uniform float strength;
+                        uniform float distortstrength;
+                        uniform vec3 distortaxis;
+                        uniform float range;
+                        uniform float time;
+                        uniform vec3 truepos;
+                        attribute vec3 extra;
+                        uniform vec3 colorlo;
+                        uniform vec3 colorhi;
+                        uniform float sizelo;
+                        uniform float sizehi;
+                        varying vec4 vColor;
+                        float rand(vec2 co){
+                           return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+                         }
+                        vec3 distortvector(vec3 R,vec3 V,float len)
+                        {
+return vec3(R.x*(1.0+(-1.0+len)*V.x*V.x)+(-1.0+len)*R.y*V.x*V.y+(-1.0+len)*R.z*V.x*V.z,
+(-1.0+len)*R.x*V.x*V.y+R.y*(1.0+(-1.0+len)*V.y*V.y)+(-1.0+len)*R.z*V.y*V.z,
+(-1.0+len)*R.x*V.x*V.z+(-1.0+len)*R.y*V.y*V.z+R.z*(1.0+(-1.0+len)*V.z*V.z));
+                        }
+                        void main() {
+                                float vtime=mod(time,rand(vec2(extra.z,position.z))+1.0);
+                                vColor = vec4(mix(colorlo,colorhi,rand(vec2(extra.x,position.y))),(1.0-smoothstep(0.0,1.0,vtime))*strength);
+                                float z=rand(vec2(extra.x,position.x))*2.0-1.0;
+                                float t=rand(vec2(extra.y,position.y))*2.0*3.141592;
+                                float r=sqrt(1.0-pow(z,2.0));
+                                vec3 axis=vec3(r*cos(t),r*sin(t),z);
+                                vec3 distorted=distortvector(axis,distortaxis,distortstrength);
+                                vec4 mvPosition=modelViewMatrix*vec4(truepos+mix(-distorted,distorted,step(0.0,dot(distortaxis,axis)))*range*vtime,1.0);
+                                float size = mix(sizelo,sizehi,rand(vec2(extra.y,position.z)));
+                                gl_PointSize = size * ( 300.0 / length( mvPosition.xyz ) );
+                                gl_Position = projectionMatrix * mvPosition;
+
+                        }
+
+                </script>
+
+                <script type="x-shader/x-fragment" id="damagespark_f">
+
+                        uniform sampler2D texture;
+                        varying vec4 vColor;
+                        void main() {
+                                gl_FragColor = vColor * texture2D( texture, gl_PointCoord );
+                        }
+
+                </script>
+
+
+                <script>
+
+                var particleblock;
+                var renderer, scene, camera, stats;
+
+                var sphere, uniforms, attributes;
+
+                var noise = [];
+
+                var WIDTH = window.innerWidth,
+                        HEIGHT = window.innerHeight;
+
+                var sparks;
+                var particlegeometry;
+
+                init();
+                animate();
+
+                function makeparticlegeometry()
+                {
+                        var radius = 200;
+
+                       particlegeometry = new THREE.Geometry();
+                       particlegeometry.extras_data=[];
+                        for ( var i = 0; i < 10000; i++ ) {
+
+                                var vertex = new THREE.Vector3();
+                                vertex.x = Math.random() * 2 - 1;
+                                vertex.y = Math.random() * 2 - 1;
+                                vertex.z = Math.random() * 2 - 1;
+                                var vertex2 = new THREE.Vector3();
+                                vertex2.x = Math.random() * 2 - 1;
+                                vertex2.y = Math.random() * 2 - 1;
+                                vertex2.z = Math.random() * 2 - 1;
+                                vertex.multiplyScalar( radius );
+                                vertex2.multiplyScalar( radius );
+                                particlegeometry.vertices.push( vertex );
+                                particlegeometry.extras_data.push(vertex2);
+                        }
+
+                }
+
+
+
+                function makespark(where) {
+                        if(!sparks) sparks=[];
+                        if(!particlegeometry) {makeparticlegeometry();}
+                        attributes = {
+                                //size: { type: 'f', value: [] },
+                                extra: { type: 'v3', value: particlegeometry.extras_data }
+                        };
+                         colorlow = new THREE.Color( 0xffaa00 );
+                         colorlow.setHSV( 0.5, 0.7, 0.9 );
+                         colorhig = new THREE.Color( 0xffaa00 );
+                         colorhig.setHSV( 0.6, 0.7, 0.9 );
+
+                        uniforms = {
+                                time: { type: "f", value: 1.0 },
+                                distortstrength: { type: "f", value: 3.0 },
+                                strength: { type: "f", value: 0.3 },
+                                range: { type: "f", value: 15.0 },
+                                sizelo: { type: "f", value: 9.0 },
+                                sizehi: { type: "f", value: 11.0 },
+                                truepos: {   type: "v3", value: where},
+                                distortaxis: {   type: "v3", value: new THREE.Vector3(2,2,1).normalize()},
+                                colorlo:     { type: "c", value: colorlow },
+                                colorhi:     { type: "c", value: colorhig },
+                                texture:   { type: "t", value: 0, texture: THREE.ImageUtils.loadTexture( "spark1.png" ) },
+                        };
+
+                        var shaderMaterial = new THREE.ShaderMaterial( {
+                                uniforms:               uniforms,
+                                attributes:     attributes,
+                                vertexShader:   document.getElementById( 'damagespark_v' ).textContent,
+                                fragmentShader: document.getElementById( 'damagespark_f' ).textContent,
+                                blending:               THREE.AdditiveBlending,
+                                depthTest:              false,
+                                transparent:    true
+
+                        });
+var radius = 200;
+
+                        sphere = new THREE.ParticleSystem( particlegeometry, shaderMaterial );
+                        var vertices = particlegeometry.vertices;
+                        sparks.push(sphere);
+                        return sphere;
+                }
+
+                function init() {
+
+                        camera = new THREE.PerspectiveCamera( 40, WIDTH / HEIGHT, 1, 10000 );
+                        camera.position.z = 300;
+
+                        scene = new THREE.Scene();
+
+                        scene.add( camera );
+                        scene.add( makespark(new THREE.Vector3(0,0,0)));
+
+
+
+
+
+
+                        renderer = new THREE.WebGLRenderer( { clearColor: 0x000000, clearAlpha: 1 } );
+                        renderer.setSize( WIDTH, HEIGHT );
+
+                        var container = document.getElementById( 'container' );
+                        container.appendChild( renderer.domElement );
+
+
+
+                        //
+
+                        window.addEventListener( 'resize', onWindowResize, false );
+
+                }
+
+                function onWindowResize() {
+
+                        camera.aspect = window.innerWidth / window.innerHeight;
+                        camera.updateProjectionMatrix();
+
+                        renderer.setSize( window.innerWidth, window.innerHeight );
+
+                }
+
+                function animate() {
+
+                        requestAnimationFrame( animate );
+
+                        render();
+
+                }
+
+                function render() {
+
+                        var time = Date.now() * 0.0005;
+
+                        sphere.rotation.z = 3.15;
+
+                     //   for( var i = 0; i < attributes.size.value.length; i++ ) {
+
+                       //         attributes.size.value[ i ] = 14 + 13 * Math.sin( 0.1 * i + time );
+
+                      uniforms.time.value=time%2000.0;
+                      //  }
+
+                       // attributes.size.needsUpdate = true;
+
+                        renderer.render( scene, camera );
+
+                }
+
+
+        </script>
+
+</body>
+
+</html>
