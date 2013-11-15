@@ -130,7 +130,8 @@ return vec3(R.x*(1.0+(-1.0+len)*V.x*V.x)+(-1.0+len)*R.y*V.x*V.y+(-1.0+len)*R.z*V
 
                 }
 
-
+                function setHSV( color, h, s, v ) {
+                { return color.setHSL( h, ( s * v ) / ( ( h = ( 2 - s ) * v ) < 1 ? h : ( 2 - h ) ), h * 0.5 ); }
 
                 function makespark(where) {
                         if(!sparks) sparks=[];
@@ -140,9 +141,10 @@ return vec3(R.x*(1.0+(-1.0+len)*V.x*V.x)+(-1.0+len)*R.y*V.x*V.y+(-1.0+len)*R.z*V
                                 extra: { type: 'v3', value: particlegeometry.extras_data }
                         };
                          colorlow = new THREE.Color( 0xffaa00 );
-                         colorlow.fromHSV( 0.5, 0.7, 0.9 );
+
+                         setHSV( colorlow, 0.5, 0.7, 0.9 );
                          colorhig = new THREE.Color( 0xffaa00 );
-                         colorhig.fromHSV( 0.6, 0.7, 0.9 );
+                         setHSV(colorhig, 0.6, 0.7, 0.9 );
 
                         uniforms = {
                                 time: { type: "f", value: 1.0 },
