@@ -130,7 +130,7 @@ return vec3(R.x*(1.0+(-1.0+len)*V.x*V.x)+(-1.0+len)*R.y*V.x*V.y+(-1.0+len)*R.z*V
 
                 }
 
-                function setHSV( color, h, s, v ) {
+                function setHSV( color, h, s, v )
                 { return color.setHSL( h, ( s * v ) / ( ( h = ( 2 - s ) * v ) < 1 ? h : ( 2 - h ) ), h * 0.5 ); }
 
                 function makespark(where) {
